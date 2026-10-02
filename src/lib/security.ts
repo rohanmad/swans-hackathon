@@ -7,3 +7,9 @@ export function equalSecret(a: string, b: string) {
 export function sameOrigin(request: Request, origin: string) {
   return request.headers.get("origin") === origin;
 }
+// Next.js normalizes request.url to "localhost" in development, so the browser-facing origin comes from the Host header.
+export function requestOrigin(request: Request) {
+  const url = new URL(request.url);
+  const host = request.headers.get("host");
+  return host ? `${url.protocol}//${host}` : url.origin;
+}

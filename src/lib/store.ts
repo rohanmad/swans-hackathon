@@ -7,7 +7,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 let database: DatabaseSync | undefined;
 let encryptionKey: Buffer | undefined;
 function directory() {
-  const dir = resolve(process.env.CASEBRIEF_DATA_DIR || ".data");
+  const dir = resolve(/*turbopackIgnore: true*/ process.env.CASEBRIEF_DATA_DIR || ".data");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   chmodSync(dir, 0o700);
   return dir;

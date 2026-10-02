@@ -3,14 +3,15 @@ import { cookies } from "next/headers";
 import { consumeOAuth, cookieOptions, createConnection, createSession, SESSION_COOKIE, STATE_COOKIE } from "@/lib/auth";
 import { exchangeToken } from "@/lib/clio-client";
 import { requireConfig } from "@/lib/config";
+import { requestOrigin } from "@/lib/security";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  let destination = url.origin;
+  let destination = requestOrigin(request);
   try {
     const config = requireConfig();
+    if (destination !== config.appOrigin) throw new Error("Wrong callback host.");
     destination = config.appOrigin;
-    if (url.origin !== destination) throw new Error("Wrong callback host.");
     consumeOAuth(url.searchParams.get("state"), (await cookies()).get(STATE_COOKIE)?.value);
     if (url.searchParams.has("error")) throw new Error("Authorization declined.");
     const code = url.searchParams.get("code");

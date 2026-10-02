@@ -19,12 +19,14 @@ Implemented in source:
 - Saved import progress, collection-level failures, and preservation of the previous snapshot when an import fails entirely.
 - A firm-session-protected document-download redirect for documents present in the imported case.
 
+- Minimal root layout and single-page connection / matter-selection / import-status UI (`src/app/page.tsx`).
+- Dependencies installed and `package-lock.json` committed (Next 16.3.8, React 19, TypeScript 5.9). `npm run typecheck`, `npm run build`, and `npm test` (16 tests) pass.
+- Fixed: Next.js reports `request.url` as `localhost` in dev, which made `/api/clio/connect` redirect to itself forever and would have made the callback reject every real Clio redirect. Origin checks now use the `Host` header via `requestOrigin()` in `security.ts`.
+- Smoke-tested against the local dev server with dummy credentials: the connect route redirects to Clio's authorize URL with the `127.0.0.1` callback; a bad callback state, a missing session (401), and a cross-origin POST (403) are rejected.
+
 Not implemented or verified:
 
-- No root layout, home page, connection screen, or dashboard. **The project is not yet a runnable end-to-end web app.**
-- Dependencies have not been installed; no lockfile is present. Declared package versions have not been checked against the package registry.
-- No typecheck, build, automated tests, browser verification, or live Clio calls have been run.
-- `npm test` is declared, but the `tests/` directory has not been created yet.
+- No live Clio calls yet. **The OAuth round trip with real credentials is the next thing to verify.**
 - No credentials have been written or committed. The user has the Clio application key and secret.
 - No Sapini data has been fetched.
 - No document-file ingestion, text extraction, OCR, or AI briefing.
@@ -104,10 +106,8 @@ Import progress and the saved snapshot are available through the status endpoint
 
 ## Resume in this order
 
-1. Install dependencies and verify the declared package versions. Generate and commit a lockfile. Node >=22.13 is required for the built-in SQLite module; Node 25.8.2 was available during scaffolding.
-2. Add `src/app/layout.tsx`, `src/app/page.tsx`, and the minimal connection/import interface. Do not expand scope before the OAuth round trip works.
-3. Add meaningful tests for OAuth state mismatch, expiry and replay; missing firm session; mismatched POST Origin; pagination; cross-origin pagination rejection; partial imports; and token refresh.
-4. Run `npm run typecheck` and `npm run build`, resolving errors. Neither has passed yet.
+Steps 1–4 (dependencies, minimal UI, tests, typecheck/build) are done. Node >=22.13 is required for the built-in SQLite module. Tests run with `--conditions=react-server` so `server-only` imports resolve, and use `CASEBRIEF_REQUEST_INTERVAL_MS=0` and a temp `CASEBRIEF_DATA_DIR`.
+
 5. Have the user fill `.env.local`, then start `npm run dev` and open `http://127.0.0.1:3000`.
 6. Connect Clio, list matters, select Sapini, and import. Inspect actual counts, field values, and collection errors. Confirm the notes `type` parameter accepted by the live API; the downloaded reference lists `Matter`, while older prose examples vary in casing.
 7. Retrieve document contents, extract text/OCR, and retain source IDs, excerpts, and page references.

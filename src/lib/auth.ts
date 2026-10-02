@@ -40,7 +40,9 @@ export function createSession(conn: Connection) {
   return token;
 }
 export async function authorizedConnection(): Promise<Connection | null> {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  return sessionConnection((await cookies()).get(SESSION_COOKIE)?.value);
+}
+export function sessionConnection(token: string | undefined): Connection | null {
   if (!token) return null;
   const session = load<Session>("session:" + hash(token));
   const conn = connection();

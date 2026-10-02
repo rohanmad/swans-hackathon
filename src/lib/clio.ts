@@ -24,7 +24,8 @@ export function clio(conn: Connection) {
   let client = clients.get(conn.id);
   if (!client) {
     clients.clear();
-    client = new ClioClient(conn.baseUrl, () => accessToken(conn));
+    const interval = Number(process.env.CASEBRIEF_REQUEST_INTERVAL_MS);
+    client = new ClioClient(conn.baseUrl, () => accessToken(conn), (input, init) => fetch(input, init), Number.isFinite(interval) && interval >= 0 ? interval : undefined);
     clients.set(conn.id, client);
   }
   return client;
