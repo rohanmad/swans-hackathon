@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { Mail, MapPin, Phone } from 'lucide-react'
-import type { Client } from '../types'
+import type { Client, DeskLine } from '../types'
 import { cx, daysAgo, fmtDate, telHref } from '../lib/format'
 import { EvidenceLink } from './EvidenceLink'
+import { RequestClient } from './RequestClient'
 import { SectionHeader } from './SectionHeader'
 
-export function ClientCard({ client }: { client: Client }) {
+export function ClientCard({ client, requests }: { client: Client; requests?: DeskLine[] }) {
   const since = daysAgo(client.lastContact.date)
   const stale = since > 14
   return (
@@ -55,6 +56,7 @@ export function ClientCard({ client }: { client: Client }) {
           <EvidenceLink sourceId={client.lastContact.sourceId} label="Open" />
         </div>
       </div>
+      <RequestClient client={client} items={requests ?? []} />
     </section>
   )
 }

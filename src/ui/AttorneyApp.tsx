@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Digest } from "@/lib/digest";
 import type { Snapshot } from "@/lib/types";
 import { buildBrief, sourceId, type Brief } from "./adapter";
 import { SourceProvider, useSource } from "./context/SourceContext";
+import { AiSummary, Chronology, GapsAndSteps, Injuries, type AiState } from "./components/AiBriefing";
 import { AttentionCenter, WaitingOn } from "./components/AttentionCenter";
 import { CaseHeader } from "./components/CaseHeader";
 import { CaseSignals } from "./components/CaseSignals";
@@ -15,11 +16,11 @@ import { IncidentCard } from "./components/IncidentCard";
 import { MedicalBills } from "./components/MedicalBills";
 import { MedicalProviders } from "./components/MedicalProviders";
 import { MedicalRecordSummary } from "./components/MedicalRecordSummary";
+import { ProviderDesk } from "./components/ProviderDesk";
 import { SectionHeader } from "./components/SectionHeader";
 import { Sidebar, type PageId } from "./components/Sidebar";
 import { SourceDrawer } from "./components/SourceDrawer";
 import { cx, fmtDate } from "./lib/format";
-import { Sharing } from "./Sharing";
 
 type Props = { snapshot: Snapshot; digest: Digest; syncing: boolean; onResync: () => void; onSwitchMatter: () => void };
 
@@ -27,7 +28,6 @@ export function AttorneyApp({ snapshot, digest, syncing, onResync, onSwitchMatte
   const brief = useMemo(() => buildBrief(snapshot, digest), [snapshot, digest]);
   const [page, setPage] = useState<PageId>("overview");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shareProvider, setShareProvider] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,7 +36,7 @@ export function AttorneyApp({ snapshot, digest, syncing, onResync, onSwitchMatte
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  const share = (id: string | null) => { setShareProvider(id ?? digest.providers[0]?.id ?? null); setPage("sharing"); };
+  const ai = useAiBrief();
 
   return (
     <SourceProvider sources={brief.sources}>
@@ -44,9 +44,9 @@ export function AttorneyApp({ snapshot, digest, syncing, onResync, onSwitchMatte
         <Sidebar current={page} onNavigate={setPage} matterNumber={brief.case.id} status={brief.case.status === "active" ? "Active" : "Closed"} overdue={brief.overdueCount} onSwitchMatter={onSwitchMatter} />
         <main className="min-w-0 flex-1">
           <div className="sticky top-0 z-30">
-            <CaseHeader data={brief.case} onSearch={() => setSearchOpen(true)} onShare={() => share(shareProvider)} onResync={onResync} syncing={syncing} />
+            <CaseHeader data={brief.case} client={brief.client} clientRequests={brief.clientRequests} onSearch={() => setSearchOpen(true)} onResync={onResync} syncing={syncing} />
           </div>
-          {page === "overview" && <Overview brief={brief} onShare={share} onProviders={() => setPage("providers")} />}
+          {page === "overview" && <Overview brief={brief} ai={ai} onProviders={() => setPage("providers")} />}
           {page === "timeline" && <Timeline brief={brief} />}
           {page === "documents" && <Page><DemandDocuments documents={brief.documents} /></Page>}
           {page === "tasks" && (
@@ -59,13 +59,14 @@ export function AttorneyApp({ snapshot, digest, syncing, onResync, onSwitchMatte
           )}
           {page === "providers" && (
             <Page>
-              <div className="grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12">
-                <MedicalProviders providers={brief.providers} onShare={share} />
+              <ProviderDesk desk={brief.providerDesk} />
+              {ai.brief && ai.brief.chronology.length > 0 && <div className="mt-12"><Chronology brief={ai.brief} /></div>}
+              <div className="mt-12 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12">
+                <MedicalProviders providers={brief.providers} />
                 {brief.bills.length > 0 && <MedicalBills bills={brief.bills} totalSourceId={brief.billsSourceId} />}
               </div>
             </Page>
           )}
-          {page === "sharing" && <Sharing digest={digest} providerId={shareProvider ?? digest.providers[0]?.id ?? null} onPick={setShareProvider} />}
         </main>
       </div>
       <SourceDrawer />
@@ -78,26 +79,57 @@ function Page({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto max-w-[1400px] px-10 pt-7 pb-24">{children}</div>;
 }
 
-function Overview({ brief, onShare, onProviders }: { brief: Brief; onShare: (id: string) => void; onProviders: () => void }) {
+function useAiBrief(): AiState {
+  const [state, setState] = useState<Omit<AiState, "retry">>({ status: "loading", brief: null });
+  const started = useRef(false);
+  const generate = useCallback(async () => {
+    setState({ status: "loading", brief: null });
+    try {
+      const res = await fetch("/api/ai/brief", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "The AI briefing failed.");
+      setState({ status: "ready", brief: body.brief });
+    } catch (e) { setState({ status: "error", brief: null, error: e instanceof Error ? e.message : "The AI briefing failed." }); }
+  }, []);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void (async () => {
+      try {
+        const body = await (await fetch("/api/ai/brief", { cache: "no-store" })).json();
+        if (!body.configured) return setState({ status: "off", brief: null });
+        if (body.brief) return setState({ status: "ready", brief: body.brief });
+      } catch { /* fall through to generation */ }
+      await generate();
+    })();
+  }, [generate]);
+  return { ...state, retry: generate };
+}
+
+function Overview({ brief, ai, onProviders }: { brief: Brief; ai: AiState; onProviders: () => void }) {
   return (
     <Page>
       {brief.signals.length > 0 && <CaseSignals signals={brief.signals} />}
+      {ai.status !== "off" && <div className="mt-10"><AiSummary ai={ai} /></div>}
 
       <div className="mt-10 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12 max-[1240px]:gap-8">
         <div className="space-y-10">
           <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-8">
             {brief.incident ? <IncidentCard incident={brief.incident} /> : <div />}
-            {brief.client && <ClientCard client={brief.client} />}
+            {brief.client && <ClientCard client={brief.client} requests={brief.clientRequests} />}
           </div>
+          {ai.brief && <Injuries brief={ai.brief} />}
           {brief.attention.length > 0 && <AttentionCenter items={brief.attention.slice(0, 5)} />}
           {brief.waiting.length > 0 && <WaitingOn items={brief.waiting} />}
         </div>
 
         <div className="space-y-10">
-          <MedicalProviders providers={brief.providers.slice(0, 6)} onShare={onShare} />
+          <MedicalProviders providers={brief.providers.slice(0, 6)} />
           {brief.bills.length > 0 && <MedicalBills bills={brief.bills} totalSourceId={brief.billsSourceId} onOpenFinancials={onProviders} />}
         </div>
       </div>
+
+      {ai.brief && (ai.brief.gaps.length > 0 || ai.brief.nextSteps.length > 0) && <div className="mt-14"><GapsAndSteps brief={ai.brief} /></div>}
 
       {brief.keyNotes.length > 0 && (
         <div className="mt-14">

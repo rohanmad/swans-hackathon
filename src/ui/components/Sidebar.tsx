@@ -1,9 +1,9 @@
-import { CalendarRange, CheckSquare, FileText, LayoutGrid, Share2, Stethoscope } from 'lucide-react'
+import { CalendarRange, CheckSquare, FileText, LayoutGrid, Stethoscope } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cx } from '../lib/format'
 import { SwanMark } from './SwanMark'
 
-export type PageId = 'overview' | 'timeline' | 'documents' | 'tasks' | 'providers' | 'sharing'
+export type PageId = 'overview' | 'timeline' | 'documents' | 'tasks' | 'providers'
 
 interface NavItem {
   id: PageId
@@ -30,7 +30,6 @@ export function Sidebar({ current, onNavigate, matterNumber, status, overdue, on
   ]
   const providerNav: NavItem[] = [
     { id: 'providers', label: 'Providers', icon: Stethoscope },
-    { id: 'sharing', label: 'Provider sharing', icon: Share2 },
   ]
   const renderItem = (item: NavItem) => {
     const active = item.id === current

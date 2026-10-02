@@ -1,8 +1,8 @@
 import { documentTitle, type DatedItem, type Digest, type Fact, type Source as DigestSource } from "@/lib/digest";
 import { nested, plainText, text, type ClioRecord, type Snapshot } from "@/lib/types";
 import type {
-  AttentionItem, BriefSegment, CaseData, CaseSignal, CaseStage, Client, DemandDocument, Incident,
-  MedicalBill, MedicalProvider, MedicalSummarySection, SearchEntry, Source, SourceKind, StoryEvent, WaitingItem
+  AttentionItem, BriefSegment, CaseData, CaseSignal, CaseStage, Client, DemandDocument, DeskLine, Incident,
+  MedicalBill, MedicalProvider, MedicalSummarySection, ProviderDesk, SearchEntry, Source, SourceKind, StoryEvent, WaitingItem
 } from "./types";
 
 export type Brief = {
@@ -11,6 +11,7 @@ export type Brief = {
   providers: MedicalProvider[]; bills: MedicalBill[]; billsSourceId?: string;
   keyNotes: MedicalSummarySection[]; story: StoryEvent[]; documents: DemandDocument[];
   timeline: DatedItem[]; search: SearchEntry[]; sources: Record<string, Source>;
+  providerDesk: ProviderDesk; clientRequests: DeskLine[];
   totalEntries: number; overdueCount: number;
 };
 
@@ -196,12 +197,73 @@ export function buildBrief(snapshot: Snapshot, digest: Digest): Brief {
   for (const f of digest.facts) q(`q-fact-${f.label}`, f.label, f.label.toLowerCase().split(/\s+/), firstSentence(f.value, 240), f.source);
   for (const item of timeline) q(`q-${item.kind}-${item.source.id}`, item.title, item.title.toLowerCase().split(/\W+/).filter(w => w.length > 3), item.detail ? firstSentence(item.detail, 200) : `${KIND[item.kind] ?? item.kind} · ${fmt(item.date)}`, item.source);
 
+  const providerDesk = buildProviderDesk(snapshot, digest, incidentFact?.value ?? "", client, waiting, sid);
   return {
     case: caseData, client, incident, signals, attention, waiting, providers, bills,
     billsSourceId: digest.kpis.specials ? sid(digest.kpis.specials.source) : undefined,
-    keyNotes, story, documents, timeline, search, sources,
+    keyNotes, story, documents, timeline, search, sources, providerDesk,
+    clientRequests: providerDesk.stillNeeded,
     totalEntries: digest.timeline.length, overdueCount: digest.overdue.length
   };
+}
+
+const HISTORY = /diagnos|injur|mri|ct scan|surgery|fracture|tear|ime|medical history|past medical|pmh|concuss|labral|rotator|spine|shoulder|knee/i;
+const PRIOR = /prior|previous|pre-exist|past medical|pmh|history of|denied prior|undisclosed|pre-accident/i;
+const unique = (lines: DeskLine[]) => {
+  const seen = new Set<string>();
+  return lines.filter(l => { const k = l.sourceId + l.text; if (!l.text || seen.has(k)) return false; seen.add(k); return true; });
+};
+const line = (item: { title: string; detail?: string; date: string; source: DigestSource }, sid: (s: DigestSource) => string, max = 200): DeskLine => ({
+  text: firstSentence(item.detail || item.title, max), sourceId: sid(item.source), date: day(item.date)
+});
+
+function buildProviderDesk(snapshot: Snapshot, digest: Digest, doi: string, client: Client | null, waiting: WaitingItem[], sid: (s: DigestSource) => string): ProviderDesk {
+  const doiDay = doi.slice(0, 10);
+  const notes = digest.timeline.filter(i => i.kind === "notes");
+  const medicalHistory = unique(notes.filter(n => HISTORY.test(`${n.title} ${n.detail ?? ""}`)).map(n => line(n, sid))).slice(0, 8);
+  const priorTreatment = unique([
+    ...notes.filter(n => PRIOR.test(`${n.title} ${n.detail ?? ""}`) || (doiDay && n.date.slice(0, 10) < doiDay && HISTORY.test(`${n.title} ${n.detail ?? ""}`))).map(n => line(n, sid)),
+    ...digest.timeline.filter(i => i.kind === "documents" && doiDay && i.date.slice(0, 10) < doiDay).map(i => ({ text: documentTitle(i.title), sourceId: sid(i.source), date: day(i.date), meta: "Document on file before the date of incident" }))
+  ]).slice(0, 8);
+  const clientId = snapshot.collections.contacts.records.find(c => c.is_client);
+  const inboundComms = snapshot.collections.communications.records.filter(c => {
+    const senders = Array.isArray(c.senders) ? c.senders as ClioRecord[] : [];
+    return clientId ? senders.some(p => String(p.id) === String(clientId.id)) : false;
+  }).sort((a, b) => text(b, "date").localeCompare(text(a, "date")));
+  const patientProvided = unique(inboundComms.map(c => ({
+    text: text(c, "subject") || firstSentence(text(c, "body"), 160),
+    sourceId: `communications:${c.id}`,
+    date: day(text(c, "date") || text(c, "received_at") || text(c, "created_at")),
+    meta: text(c, "type").replace(/Communication$/, "") || "Message"
+  }))).slice(0, 8);
+  const stillNeeded = unique(waiting.filter(w => w.partyRole === "Client").map(w => ({
+    text: w.item, sourceId: w.sourceId, date: w.requested, meta: w.requested ? `Due ${fmt(w.requested)}` : "Open request"
+  })));
+  const scheduling = [
+    ...(client ? [{ name: client.name, role: "Patient", phone: client.phone, email: client.email, sourceId: client.lastContact.sourceId }] : []),
+    ...digest.providers.map(p => {
+      const contact = snapshot.collections.contacts.records.find(c => String(c.id) === p.id);
+      return {
+        name: p.name, role: p.role.replace(/^(treating provider|medical provider)[,:]\s*/i, "") || "Provider",
+        phone: contact ? text(contact, "primary_phone_number") || undefined : undefined,
+        email: contact ? text(contact, "primary_email_address") || undefined : undefined,
+        sourceId: sid(p.source)
+      };
+    }).filter(c => c.phone || c.email)
+  ];
+  const now = Date.now();
+  const appointments = unique([
+    ...digest.upcomingEvents.filter(e => !/deadline|limitations|conference|depos/i.test(e.title)).map(e => ({ text: e.title, sourceId: sid(e.source), date: day(e.date), meta: "Upcoming" })),
+    ...digest.providers.flatMap(p => p.appointments.filter(a => Date.parse(a.date) >= now).map(a => ({ text: `${a.title} · ${p.name}`, sourceId: sid(a.source), date: day(a.date), meta: "Upcoming" })))
+  ]).slice(0, 8);
+  const liens = digest.kpis.liens.map(l => ({ text: `${l.label}: ${firstSentence(l.value, 180)}`, sourceId: sid(l.source) }));
+  const payment: DeskLine | null = liens[0] ? {
+    text: digest.matter.stage
+      ? `No settlement or disbursement date is on this matter. The case is in ${digest.matter.stage.toLowerCase()}; recorded liens are paid from recovery, not on a set calendar.`
+      : "No settlement or disbursement date is on this matter. Recorded liens are paid from recovery.",
+    sourceId: liens[0].sourceId
+  } : null;
+  return { medicalHistory, priorTreatment, patientProvided, stillNeeded, scheduling, appointments, liens, payment };
 }
 
 const KIND: Record<string, string> = { notes: "Note", communications: "Communication", calendar: "Calendar", documents: "Document", tasks: "Task" };

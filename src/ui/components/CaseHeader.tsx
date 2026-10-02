@@ -1,17 +1,19 @@
-import { RefreshCw, Search, Share } from 'lucide-react'
-import type { CaseData } from '../types'
+import { RefreshCw, Search } from 'lucide-react'
+import type { CaseData, Client, DeskLine } from '../types'
 import { fmtDate, fmtTime } from '../lib/format'
 import { CaseStatus } from './CaseStatus'
+import { RequestClient } from './RequestClient'
 
 interface Props {
   data: CaseData
+  client: Client | null
+  clientRequests: DeskLine[]
   onSearch: () => void
-  onShare: () => void
   onResync: () => void
   syncing: boolean
 }
 
-export function CaseHeader({ data, onSearch, onShare, onResync, syncing }: Props) {
+export function CaseHeader({ data, client, clientRequests, onSearch, onResync, syncing }: Props) {
   return (
     <header className="border-b border-line bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
       <div className="flex items-start justify-between gap-6 px-10 pt-5 pb-4">
@@ -40,14 +42,7 @@ export function CaseHeader({ data, onSearch, onShare, onResync, syncing }: Props
             <span className="flex-1 text-left">Search this case…</span>
             <kbd className="font-mono text-[10px] text-faint">⌘K</kbd>
           </button>
-          <button
-            type="button"
-            onClick={onShare}
-            className="flex h-8 items-center gap-1.5 rounded-[5px] border border-line bg-surface px-3 text-[12.5px] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
-          >
-            <Share size={13} strokeWidth={1.7} />
-            Share with provider
-          </button>
+          {client && <RequestClient client={client} items={clientRequests} compact />}
           <button
             type="button"
             onClick={onResync}

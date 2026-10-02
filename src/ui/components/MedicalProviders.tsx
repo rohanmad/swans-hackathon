@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, FileText, Phone, Share2 } from 'lucide-react'
+import { ChevronDown, FileText, Phone } from 'lucide-react'
 import type { MedicalProvider, TreatmentStatus } from '../types'
 import { useSource } from '../context/SourceContext'
 import { cx, fmtDate, telHref } from '../lib/format'
@@ -11,7 +11,7 @@ const treatmentMeta: Record<TreatmentStatus, { label: string; dot: string; text:
   complete: { label: 'Complete', dot: 'bg-line-strong', text: 'text-muted' },
 }
 
-export function MedicalProviders({ providers, onShare }: { providers: MedicalProvider[]; onShare?: (id: string) => void }) {
+export function MedicalProviders({ providers }: { providers: MedicalProvider[] }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const { sources, openSource, activeSourceId } = useSource()
   const active = providers.filter((p) => p.treatment === 'active').length
@@ -54,16 +54,6 @@ export function MedicalProviders({ providers, onShare }: { providers: MedicalPro
                 )}
                 <span>{p.treatmentDetail}</span>
                 <span className="ml-auto flex items-center gap-1.5">
-                  {onShare && (
-                    <button
-                      type="button"
-                      onClick={() => onShare(p.id)}
-                      className="flex items-center gap-1 rounded-[4px] border border-line px-2 py-[3px] text-[11.5px] text-ink-2 transition-colors hover:border-swan/40 hover:text-swan"
-                    >
-                      <Share2 size={11} strokeWidth={1.7} />
-                      Share update
-                    </button>
-                  )}
                   {p.recordIds.length > 0 && <button
                     type="button"
                     onClick={() => setExpanded(isOpen ? null : p.id)}

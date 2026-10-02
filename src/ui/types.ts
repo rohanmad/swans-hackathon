@@ -177,3 +177,29 @@ export interface SearchEntry {
   answer: string
   sourceId: string
 }
+
+export interface DeskLine {
+  text: string
+  sourceId: string
+  date?: string
+  meta?: string
+}
+
+export interface SchedulingContact {
+  name: string
+  role: string
+  phone?: string
+  email?: string
+  sourceId: string
+}
+
+export interface ProviderDesk {
+  medicalHistory: DeskLine[]
+  priorTreatment: DeskLine[]
+  patientProvided: DeskLine[]
+  stillNeeded: DeskLine[]
+  scheduling: SchedulingContact[]
+  appointments: DeskLine[]
+  liens: DeskLine[]
+  payment: DeskLine | null
+}
