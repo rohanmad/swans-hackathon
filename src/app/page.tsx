@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { COLLECTIONS, nested, text, type AppStatus, type ClioRecord } from "@/lib/types";
+import { nested, text, type AppStatus, type ClioRecord } from "@/lib/types";
+import { Dashboard } from "./dashboard";
 
 const CONNECTION_ERRORS: Record<string, string> = {
   configuration: "Clio credentials are missing or invalid. Fill in .env.local and restart the server.",
@@ -25,6 +26,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const refresh = useCallback(async () => {
     try { setStatus(await readJson<AppStatus>(await fetch("/api/clio/status", { cache: "no-store" }))); }
@@ -51,15 +53,16 @@ export default function Home() {
     try {
       const { data } = await readJson<{ data: ClioRecord[] }>(await fetch("/api/clio/matters", { cache: "no-store" }));
       setMatters(data);
-      if (data.length && !selected) setSelected(String(data[0].id));
+      const current = status?.snapshot ? String(status.snapshot.matter.id) : "";
+      if (data.length) setSelected(current && data.some(m => String(m.id) === current) ? current : String(data[0].id));
     } catch (e) { setError(e instanceof Error ? e.message : "Could not list matters."); }
     finally { setBusy(false); }
   }
 
-  async function startImport() {
+  async function startImport(matterId: string) {
     setBusy(true); setError(null);
     try {
-      await readJson(await fetch("/api/clio/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matterId: selected }) }));
+      await readJson(await fetch("/api/clio/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matterId }) }));
       await refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Could not start the import."); }
     finally { setBusy(false); }
@@ -67,71 +70,54 @@ export default function Home() {
 
   const snapshot = status?.snapshot;
   const job = status?.job;
+  const failed = snapshot ? Object.entries(snapshot.collections).filter(([, c]) => c.status === "failed") : [];
 
   return (
-    <main>
-      <h1>CaseBrief</h1>
-      <p className="muted">Read-only briefing from Clio Manage. Nothing is written back to Clio.</p>
+    <main className={snapshot ? "wide" : ""}>
+      <header className="topbar">
+        <span className="brand">CaseBrief</span>
+        <span className="muted small">Read-only from Clio Manage · nothing is written back</span>
+        <span className="spacer" />
+        {status?.connected && snapshot && (
+          <>
+            <span className="muted small">Synced {new Date(snapshot.syncedAt).toLocaleString()}</span>
+            <button className="secondary small-btn" onClick={() => startImport(String(snapshot.matter.id))} disabled={busy || running}>{running ? "Syncing…" : "Re-sync"}</button>
+            <button className="secondary small-btn" onClick={() => { setShowImport(!showImport); if (!matters) void loadMatters(); }}>Switch matter</button>
+          </>
+        )}
+      </header>
 
       {connectionError && <p className="error">{connectionError}</p>}
       {error && <p className="error">{error}</p>}
+      {job && (running || job.state === "failed") && <p className={job.state === "failed" ? "error" : "muted"}>Import {job.state}: {job.step}{job.error ? ` — ${job.error}` : ""}</p>}
+      {failed.length > 0 && <p className="error">Some Clio collections could not be read and are missing from this view: {failed.map(([name, c]) => `${name} (${c.error})`).join("; ")}</p>}
 
-      <section>
-        <h2>1. Connect Clio</h2>
-        {!status ? <p className="muted">Loading…</p>
-          : !status.configured ? (
-            <p className="error">{status.configError ?? "Add CLIO_CLIENT_ID and CLIO_CLIENT_SECRET to .env.local and restart the server."} The callback URL must be registered as <code>{status.redirectUri}</code>.</p>
-          ) : status.connected ? (
-            <div className="row"><span className="ok">Connected.</span><a className="button secondary" href="/api/clio/connect">Reconnect</a></div>
-          ) : (
+      {!status ? <p className="muted">Loading…</p>
+        : !status.configured ? (
+          <section><h2>Connect Clio</h2><p className="error">{status.configError ?? "Add CLIO_CLIENT_ID and CLIO_CLIENT_SECRET to .env.local and restart the server."} The callback URL must be registered as <code>{status.redirectUri}</code>.</p></section>
+        ) : !status.connected ? (
+          <section>
+            <h2>Connect Clio</h2>
+            <p className="muted">CaseBrief reads your matter from Clio Manage with read-only access.</p>
+            <a className="button" href="/api/clio/connect">Connect Clio</a>
+          </section>
+        ) : (!snapshot || showImport) && (
+          <section>
+            <h2>{snapshot ? "Switch matter" : "Choose a matter to brief"}</h2>
             <div className="row">
-              <a className="button" href="/api/clio/connect">Connect Clio</a>
-              <span className="muted">Callback: <code>{status.redirectUri}</code></span>
+              <button className="secondary" onClick={loadMatters} disabled={busy}>{matters ? "Reload matters" : "List matters"}</button>
+              {matters && (matters.length ? (
+                <select value={selected} onChange={e => setSelected(e.target.value)}>
+                  {matters.map(m => <option key={String(m.id)} value={String(m.id)}>{matterLabel(m)}</option>)}
+                </select>
+              ) : <span className="muted">No matters visible to this connection.</span>)}
+              {matters && matters.length > 0 && <button onClick={() => { void startImport(selected); setShowImport(false); }} disabled={busy || running || !selected}>Import and brief</button>}
+              <a className="button secondary" href="/api/clio/connect">Reconnect</a>
             </div>
-          )}
-      </section>
+          </section>
+        )}
 
-      {status?.connected && (
-        <section>
-          <h2>2. Choose a matter</h2>
-          <div className="row">
-            <button className="secondary" onClick={loadMatters} disabled={busy}>{matters ? "Reload matters" : "List matters"}</button>
-            {matters && (matters.length ? (
-              <select value={selected} onChange={e => setSelected(e.target.value)}>
-                {matters.map(m => <option key={String(m.id)} value={String(m.id)}>{matterLabel(m)}</option>)}
-              </select>
-            ) : <span className="muted">No matters visible to this connection.</span>)}
-            {matters && matters.length > 0 && <button onClick={startImport} disabled={busy || running || !selected}>Import</button>}
-          </div>
-          {job && (
-            <p className={job.state === "failed" ? "error" : "muted"}>
-              Import {job.state}: {job.step}{job.error ? ` — ${job.error}` : ""}
-            </p>
-          )}
-        </section>
-      )}
-
-      {snapshot && (
-        <section>
-          <h2>3. Imported case: {matterLabel(snapshot.matter)}</h2>
-          <p className="muted">Synced {new Date(snapshot.syncedAt).toLocaleString()} · {snapshot.status}</p>
-          <table>
-            <thead><tr><th>Collection</th><th>Records</th><th>Status</th></tr></thead>
-            <tbody>
-              {COLLECTIONS.map(name => {
-                const result = snapshot.collections[name];
-                return (
-                  <tr key={name}>
-                    <td>{name}</td>
-                    <td>{result?.records.length ?? 0}</td>
-                    <td className={result?.status === "failed" ? "error" : "ok"}>{result?.status ?? "missing"}{result?.error ? `: ${result.error}` : ""}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-      )}
+      {status?.connected && snapshot && status.digest && <Dashboard key={String(snapshot.matter.id) + snapshot.syncedAt} snapshot={snapshot} digest={status.digest} />}
     </main>
   );
 }

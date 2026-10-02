@@ -17,6 +17,7 @@ export type AppStatus = {
   hasSavedConnection: boolean;
   userName: string | null;
   snapshot: Snapshot | null;
+  digest: import("./digest").Digest | null;
   job: SyncJob | null;
 };
 export function text(record: ClioRecord, key: string): string {
