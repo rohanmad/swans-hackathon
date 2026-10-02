@@ -74,8 +74,11 @@ npm run build
 | `src/lib/ingestion.ts` | Matter import job and snapshot |
 | `src/lib/digest.ts` | Deterministic case digest (KPIs, deadlines, contact, ranking, providers) |
 | `src/lib/shares.ts` | Building, storing, opening and revoking provider shares |
-| `src/app/dashboard.tsx`, `share-panel.tsx` | Firm dashboard, source panel, share composer |
-| `src/app/share/[token]/page.tsx` | Provider view |
+| `src/app/page.tsx` | Connect, matter selection and import flow |
+| `src/ui/adapter.ts` | Maps the imported snapshot and digest into the UI's view model and source records |
+| `src/ui/AttorneyApp.tsx`, `src/ui/components/` | Firm workspace (overview, timeline, documents, tasks, providers), source drawer, search |
+| `src/ui/Sharing.tsx` | Provider share composer and share list |
+| `src/app/share/[token]/page.tsx`, `src/ui/provider/` | Provider view of an approved snapshot |
 | `src/app/api/**` | Route handlers (OAuth, status, matters, sync, documents, shares) |
 
 `design-prototype/` is a separate, earlier Vite UI mockup from a teammate. It uses illustrative placeholder data, is not connected to Clio, and is not part of the submitted app.
