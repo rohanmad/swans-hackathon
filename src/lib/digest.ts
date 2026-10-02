@@ -73,6 +73,29 @@ function nameKeys(name: string) {
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const mentions = (haystack: string, name: string) => haystack.toLowerCase().includes(name.toLowerCase());
 
+export type LienAmount = { holder: string; amount: number; status: string; isLien: boolean; sentence: string };
+const LIEN_STATUS: [RegExp, string][] = [
+  [/\bexhausted\b/i, "Exhausted"], [/\bwaived\b/i, "Waived"], [/\b(satisfied|released)\b/i, "Satisfied"],
+  [/\breduc/i, "Reduced"], [/\bpaid\b/i, "Paid"], [/\bpending\b/i, "Pending"], [/\b(asserted|claimed|filed)\b/i, "Asserted"],
+  [/\b(outstanding|owed|balance)\b/i, "Outstanding"]
+];
+
+export function lienAmounts(value: string): { amounts: LienAmount[]; notes: string[] } {
+  const amounts: LienAmount[] = [], notes: string[] = [];
+  for (const sentence of plainText(value).split(/(?<=[.;])\s+(?=[A-Z])/).map(s => s.trim()).filter(Boolean)) {
+    const match = sentence.match(/\$\s?([\d,]+(?:\.\d{1,2})?)/);
+    const amount = match ? Number(match[1].replace(/,/g, "")) : NaN;
+    if (!match || !Number.isFinite(amount)) { notes.push(sentence); continue; }
+    const holder = sentence.slice(0, match.index).replace(/[\s,:;–-]+$/, "").replace(/\s+(lien|liens|claim)$/i, "").trim();
+    amounts.push({
+      holder: holder || "Recorded amount", amount,
+      status: LIEN_STATUS.find(([p]) => p.test(sentence))?.[1] ?? "Recorded",
+      isLien: /\blien|medicaid|medicare|subrogat/i.test(sentence), sentence
+    });
+  }
+  return { amounts, notes };
+}
+
 export function documentCategory(name: string) {
   const prefix = name.includes("__") ? name.split("__")[0] : "";
   const label = prefix.replace(/^\d+[-_]?/, "").replace(/[-_]+/g, " ").trim();

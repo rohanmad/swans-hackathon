@@ -115,6 +115,7 @@ export interface MedicalProvider {
   office: string
   specialty: string
   phone?: string
+  email?: string
   treatment: TreatmentStatus
   treatmentDetail: string
   recordIds: string[]
@@ -130,6 +131,31 @@ export interface MedicalBill {
   amount: number
   status: BillStatus
   sourceId: string
+  serviceFrom?: string
+  serviceTo?: string
+}
+
+export interface TreatmentSpan {
+  from: string
+  to: string
+  amount: number
+  sourceId: string
+}
+
+export interface TreatmentMark {
+  date: string
+  label: string
+  sourceId: string
+  kind: 'appointment' | 'event'
+}
+
+export interface TreatmentLane {
+  id: string
+  name: string
+  specialty: string
+  billed: number
+  spans: TreatmentSpan[]
+  marks: TreatmentMark[]
 }
 
 export type DocCategory = string
@@ -193,13 +219,32 @@ export interface SchedulingContact {
   sourceId: string
 }
 
+export interface LienRow {
+  holder: string
+  amount: number
+  status: string
+  isLien: boolean
+  sourceId: string
+}
+
 export interface ProviderDesk {
+  signals: CaseSignal[]
   medicalHistory: DeskLine[]
   priorTreatment: DeskLine[]
   patientProvided: DeskLine[]
   stillNeeded: DeskLine[]
   scheduling: SchedulingContact[]
   appointments: DeskLine[]
-  liens: DeskLine[]
-  payment: DeskLine | null
+  liens: LienRow[]
+  lienNotes: DeskLine[]
+  payout: LienPayout | null
+}
+
+/** When a provider treating on a lien can expect to be paid. Only dated when a Clio record sets a resolution event. */
+export interface LienPayout {
+  anchor?: { label: string; event: string; date: string; sourceId: string }
+  window?: { from: string; to: string }
+  basis: string
+  unpaidSince?: { date: string; sourceId: string }
+  blockers: DeskLine[]
 }

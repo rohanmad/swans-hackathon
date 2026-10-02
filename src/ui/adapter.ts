@@ -1,8 +1,8 @@
-import { documentTitle, type DatedItem, type Digest, type Fact, type Source as DigestSource } from "@/lib/digest";
+import { documentTitle, lienAmounts, type DatedItem, type Digest, type Fact, type Source as DigestSource } from "@/lib/digest";
 import { nested, plainText, text, type ClioRecord, type Snapshot } from "@/lib/types";
 import type {
-  AttentionItem, BriefSegment, CaseData, CaseSignal, CaseStage, Client, DemandDocument, DeskLine, Incident,
-  MedicalBill, MedicalProvider, MedicalSummarySection, ProviderDesk, SearchEntry, Source, SourceKind, StoryEvent, WaitingItem
+  AttentionItem, BriefSegment, CaseData, CaseSignal, CaseStage, Client, DemandDocument, DeskLine, Incident, LienPayout, LienRow,
+  MedicalBill, MedicalProvider, MedicalSummarySection, ProviderDesk, SearchEntry, Source, SourceKind, StoryEvent, TreatmentLane, TreatmentSpan, WaitingItem
 } from "./types";
 
 export type Brief = {
@@ -11,7 +11,7 @@ export type Brief = {
   providers: MedicalProvider[]; bills: MedicalBill[]; billsSourceId?: string;
   keyNotes: MedicalSummarySection[]; story: StoryEvent[]; documents: DemandDocument[];
   timeline: DatedItem[]; search: SearchEntry[]; sources: Record<string, Source>;
-  providerDesk: ProviderDesk; clientRequests: DeskLine[];
+  providerDesk: ProviderDesk; clientRequests: DeskLine[]; treatmentLanes: TreatmentLane[];
   totalEntries: number; overdueCount: number;
 };
 
@@ -145,14 +145,28 @@ export function buildBrief(snapshot: Snapshot, digest: Digest): Brief {
     return {
       id: p.id, name: p.name, office: p.name, specialty: cap(p.role.replace(/^(treating provider|medical provider)[,:]\s*/i, "")),
       phone: contact ? text(contact, "primary_phone_number") || undefined : undefined,
+      email: contact ? text(contact, "primary_email_address") || undefined : undefined,
       treatment: upcoming || recent ? "active" : "complete",
       treatmentDetail: upcoming ? `Next visit ${fmt(upcoming.date)}` : p.lastInbound ? `Last heard from ${fmt(p.lastInbound.date)}` : p.openRequests.length ? `${p.openRequests.length} open request` : "No recent contact",
       recordIds: p.documents.map(d => `documents:${d.id}`), billSourceId: p.charges[0] ? sid(p.charges[0].source) : undefined
     };
   });
-  const bills: MedicalBill[] = digest.providers.filter(p => p.chargesTotal > 0).map(p => ({
-    id: p.id, providerId: p.id, payee: p.name, amount: p.chargesTotal, status: "unknown", sourceId: sid(p.charges[0].source)
-  }));
+  const spansOf = (p: Digest["providers"][number]): TreatmentSpan[] => p.charges.map(c => {
+    const m = c.label.match(/(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/);
+    return { from: m ? m[1] : day(c.date), to: m ? m[2] : day(c.date), amount: c.amount, sourceId: sid(c.source) };
+  }).filter(sp => sp.from);
+  const bills: MedicalBill[] = digest.providers.filter(p => p.chargesTotal > 0).map(p => {
+    const spans = spansOf(p);
+    return {
+      id: p.id, providerId: p.id, payee: p.name, amount: p.chargesTotal, status: "unknown", sourceId: sid(p.charges[0].source),
+      serviceFrom: spans.map(sp => sp.from).sort()[0], serviceTo: spans.map(sp => sp.to).sort().at(-1)
+    };
+  });
+  const treatmentLanes: TreatmentLane[] = digest.providers.map(p => ({
+    id: p.id, name: p.name, specialty: cap(p.role.replace(/^(treating provider|medical provider)[,:]\s*/i, "")), billed: p.chargesTotal,
+    spans: spansOf(p),
+    marks: p.appointments.filter(a => a.date).map(a => ({ date: day(a.date), label: a.title, sourceId: sid(a.source), kind: "appointment" as const }))
+  })).filter(l => l.spans.length || l.marks.length);
 
   const keyNotes: MedicalSummarySection[] = digest.keyNotes.slice(0, 5).map(n => ({
     id: n.source.id, label: n.title,
@@ -197,12 +211,12 @@ export function buildBrief(snapshot: Snapshot, digest: Digest): Brief {
   for (const f of digest.facts) q(`q-fact-${f.label}`, f.label, f.label.toLowerCase().split(/\s+/), firstSentence(f.value, 240), f.source);
   for (const item of timeline) q(`q-${item.kind}-${item.source.id}`, item.title, item.title.toLowerCase().split(/\W+/).filter(w => w.length > 3), item.detail ? firstSentence(item.detail, 200) : `${KIND[item.kind] ?? item.kind} · ${fmt(item.date)}`, item.source);
 
-  const providerDesk = buildProviderDesk(snapshot, digest, incidentFact?.value ?? "", client, waiting, sid);
+  const providerDesk = buildProviderDesk(snapshot, digest, incidentFact?.value ?? "", client, waiting, providers, sid);
   return {
     case: caseData, client, incident, signals, attention, waiting, providers, bills,
     billsSourceId: digest.kpis.specials ? sid(digest.kpis.specials.source) : undefined,
     keyNotes, story, documents, timeline, search, sources, providerDesk,
-    clientRequests: providerDesk.stillNeeded,
+    clientRequests: providerDesk.stillNeeded, treatmentLanes,
     totalEntries: digest.timeline.length, overdueCount: digest.overdue.length
   };
 }
@@ -217,7 +231,7 @@ const line = (item: { title: string; detail?: string; date: string; source: Dige
   text: firstSentence(item.detail || item.title, max), sourceId: sid(item.source), date: day(item.date)
 });
 
-function buildProviderDesk(snapshot: Snapshot, digest: Digest, doi: string, client: Client | null, waiting: WaitingItem[], sid: (s: DigestSource) => string): ProviderDesk {
+function buildProviderDesk(snapshot: Snapshot, digest: Digest, doi: string, client: Client | null, waiting: WaitingItem[], providers: MedicalProvider[], sid: (s: DigestSource) => string): ProviderDesk {
   const doiDay = doi.slice(0, 10);
   const notes = digest.timeline.filter(i => i.kind === "notes");
   const medicalHistory = unique(notes.filter(n => HISTORY.test(`${n.title} ${n.detail ?? ""}`)).map(n => line(n, sid))).slice(0, 8);
@@ -239,31 +253,113 @@ function buildProviderDesk(snapshot: Snapshot, digest: Digest, doi: string, clie
   const stillNeeded = unique(waiting.filter(w => w.partyRole === "Client").map(w => ({
     text: w.item, sourceId: w.sourceId, date: w.requested, meta: w.requested ? `Due ${fmt(w.requested)}` : "Open request"
   })));
-  const scheduling = [
-    ...(client ? [{ name: client.name, role: "Patient", phone: client.phone, email: client.email, sourceId: client.lastContact.sourceId }] : []),
-    ...digest.providers.map(p => {
-      const contact = snapshot.collections.contacts.records.find(c => String(c.id) === p.id);
-      return {
-        name: p.name, role: p.role.replace(/^(treating provider|medical provider)[,:]\s*/i, "") || "Provider",
-        phone: contact ? text(contact, "primary_phone_number") || undefined : undefined,
-        email: contact ? text(contact, "primary_email_address") || undefined : undefined,
-        sourceId: sid(p.source)
-      };
-    }).filter(c => c.phone || c.email)
-  ];
+  const scheduling = client ? [{ name: client.name, role: "Patient", phone: client.phone, email: client.email, sourceId: client.lastContact.sourceId }] : [];
   const now = Date.now();
   const appointments = unique([
     ...digest.upcomingEvents.filter(e => !/deadline|limitations|conference|depos/i.test(e.title)).map(e => ({ text: e.title, sourceId: sid(e.source), date: day(e.date), meta: "Upcoming" })),
     ...digest.providers.flatMap(p => p.appointments.filter(a => Date.parse(a.date) >= now).map(a => ({ text: `${a.title} · ${p.name}`, sourceId: sid(a.source), date: day(a.date), meta: "Upcoming" })))
   ]).slice(0, 8);
-  const liens = digest.kpis.liens.map(l => ({ text: `${l.label}: ${firstSentence(l.value, 180)}`, sourceId: sid(l.source) }));
-  const payment: DeskLine | null = liens[0] ? {
-    text: digest.matter.stage
-      ? `No settlement or disbursement date is on this matter. The case is in ${digest.matter.stage.toLowerCase()}; recorded liens are paid from recovery, not on a set calendar.`
-      : "No settlement or disbursement date is on this matter. Recorded liens are paid from recovery.",
-    sourceId: liens[0].sourceId
-  } : null;
-  return { medicalHistory, priorTreatment, patientProvided, stillNeeded, scheduling, appointments, liens, payment };
+  const liens: LienRow[] = [], lienNotes: DeskLine[] = [];
+  for (const l of digest.kpis.liens) {
+    const { amounts, notes } = lienAmounts(l.value);
+    for (const a of amounts) liens.push({ holder: a.holder, amount: a.amount, status: a.status, isLien: a.isLien, sourceId: sid(l.source) });
+    for (const n of notes) lienNotes.push({ text: n, sourceId: sid(l.source) });
+  }
+  const lienSource = digest.kpis.liens[0] ? sid(digest.kpis.liens[0].source) : undefined;
+  const payout = lienSource ? lienPayout(digest, lienSource, sid) : null;
+
+  const signals: CaseSignal[] = [];
+  const charges = digest.providers.flatMap(p => p.charges);
+  if (charges.length) {
+    const billed = digest.providers.filter(p => p.chargesTotal > 0).length;
+    const specials = digest.kpis.specials ? Number(digest.kpis.specials.value.replace(/[^\d.]/g, "")) : NaN;
+    signals.push({
+      id: "charges", label: "Provider charges", value: usd(digest.kpis.medicalCharges), qualifier: `${charges.length} itemized bills · ${billed} providers`,
+      sub: Number.isFinite(specials) ? (Math.round(specials) === Math.round(digest.kpis.medicalCharges) ? "Matches medical specials on file" : `Specials on file ${digest.kpis.specials!.value}`) : undefined,
+      sourceId: digest.kpis.specials ? sid(digest.kpis.specials.source) : sid(charges[0].source)
+    });
+  }
+  if (lienSource) {
+    const asserted = liens.filter(l => l.isLien);
+    const other = liens.filter(l => !l.isLien);
+    signals.push({
+      id: "liens", label: "Liens asserted", value: usd(asserted.reduce((s, l) => s + l.amount, 0)),
+      qualifier: asserted.length ? asserted.map(l => l.holder).join(" · ") : "No lien amount recorded",
+      sub: other.length ? other.map(l => `${l.holder} ${usd(l.amount)} ${l.status.toLowerCase()}`).join(" · ") : undefined,
+      sourceId: lienSource
+    });
+  }
+  if (providers.length) {
+    const treating = digest.facts.find(f => /treatment status/i.test(f.label));
+    signals.push({
+      id: "treating", label: "Actively treating", value: `${providers.filter(p => p.treatment === "active").length} of ${providers.length}`,
+      qualifier: "Providers on this matter", sub: treating ? firstSentence(treating.value, 70) : undefined,
+      sourceId: treating ? sid(treating.source) : `contacts:${providers[0].id}`
+    });
+  }
+  if (payout) {
+    signals.push({
+      id: "payout", label: "Lien payout", value: payout.window ? fmt(payout.window.from) : "No date",
+      qualifier: payout.window
+        ? (payout.window.to !== payout.window.from ? `Est. to ${fmt(payout.window.to)} · after ${payout.anchor!.label.toLowerCase()}` : "Disbursement scheduled")
+        : "No settlement, mediation or trial set",
+      sub: payout.unpaidSince ? `Unpaid ${elapsed(payout.unpaidSince.date)} · since ${fmt(payout.unpaidSince.date)}` : undefined,
+      sourceId: payout.anchor?.sourceId ?? payout.blockers[0]?.sourceId ?? lienSource!
+    });
+  }
+  const nextVisit = appointments[0];
+  if (nextVisit) signals.push({ id: "next", label: "Next appointment", value: fmt(nextVisit.date ?? ""), qualifier: nextVisit.text, sub: `${appointments.length} upcoming`, sourceId: nextVisit.sourceId });
+  else if (stillNeeded.length) signals.push({ id: "needed", label: "Waiting on client", value: String(stillNeeded.length), qualifier: stillNeeded[0].text, sub: stillNeeded[0].meta, sourceId: stillNeeded[0].sourceId });
+
+  return { signals, medicalHistory, priorTreatment, patientProvided, stillNeeded, scheduling, appointments, liens, lienNotes, payout };
+}
+
+const RESOLUTION: { match: RegExp; label: string; days: [number, number] }[] = [
+  { match: /disburs|settlement (check|funds)|closing statement/i, label: "Disbursement", days: [0, 0] },
+  { match: /settle|release/i, label: "Settlement", days: [30, 60] },
+  { match: /mediat|arbitrat/i, label: "Mediation", days: [30, 90] },
+  { match: /\btrial\b|jury selection/i, label: "Trial", days: [60, 120] },
+];
+const BLOCKERS = [/depos/i, /compliance|conference|note of issue/i, /\bime\b/i, /surg|arthroscop/i];
+const addDays = (date: string, n: number) => new Date(Date.parse(date.slice(0, 10) + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
+
+export function elapsed(from: string, now = Date.now()) {
+  const months = Math.max(0, Math.floor((now - Date.parse(from.slice(0, 10) + "T12:00:00Z")) / (30.44 * 86_400_000)));
+  const y = Math.floor(months / 12), m = months % 12;
+  return [y ? `${y} yr` : "", m || !y ? `${m} mo` : ""].filter(Boolean).join(" ");
+}
+
+function lienPayout(digest: Digest, lienSource: string, sid: (s: DigestSource) => string): LienPayout {
+  const ahead = [...digest.upcomingEvents, ...digest.upcoming].filter(e => e.date).sort((a, b) => a.date.localeCompare(b.date));
+  let anchor: LienPayout["anchor"], window: LienPayout["window"], basis: string;
+  for (const e of ahead) {
+    const kind = RESOLUTION.find(r => r.match.test(e.title));
+    if (!kind) continue;
+    anchor = { label: kind.label, event: e.title, date: day(e.date), sourceId: sid(e.source) };
+    window = { from: addDays(e.date, kind.days[0]), to: addDays(e.date, kind.days[1]) };
+    basis = kind.days[1]
+      ? `${kind.label} on ${fmt(anchor.date)}, plus ${kind.days[0]}–${kind.days[1]} days for releases, lien resolution and disbursement. An estimate, not a set date.`
+      : `Disbursement scheduled for ${fmt(anchor.date)}.`;
+    break;
+  }
+  basis ??= `No settlement, mediation or trial date is in Clio${digest.matter.stage ? `; the matter is in ${digest.matter.stage.toLowerCase()}` : ""}. Liens are paid from the recovery, so there is no payout date to give yet.`;
+
+  const first = digest.providers.flatMap(p => p.charges.map(c => ({ date: c.label.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? day(c.date), source: c.source })))
+    .filter(c => c.date).sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  const blockers: DeskLine[] = [];
+  if (!anchor) {
+    const status = digest.facts.find(f => /treatment status/i.test(f.label));
+    if (status && /ongoing|active|never discharged|no mmi|not (yet )?complete/i.test(status.value)) blockers.push({ text: firstSentence(status.value, 120), sourceId: sid(status.source), meta: "Treatment" });
+    const seen = new Set<number>();
+    for (const e of ahead) {
+      const topic = BLOCKERS.findIndex(b => b.test(e.title));
+      if (topic < 0 || seen.has(topic)) continue;
+      seen.add(topic);
+      blockers.push({ text: e.title.replace(/^By medical provider:\s*/i, ""), sourceId: sid(e.source), date: day(e.date), meta: e.kind === "tasks" ? "Open task" : "Calendar" });
+    }
+  }
+  return { anchor, window, basis, unpaidSince: first ? { date: first.date, sourceId: sid(first.source) } : undefined, blockers };
 }
 
 const KIND: Record<string, string> = { notes: "Note", communications: "Communication", calendar: "Calendar", documents: "Document", tasks: "Task" };

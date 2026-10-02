@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDigest, documentCategory, documentTitle } from "../src/lib/digest";
+import { buildDigest, documentCategory, documentTitle, lienAmounts } from "../src/lib/digest";
 import { NOW, fixture } from "./fixture";
 
 test("KPIs come from matter custom fields, each with its source", () => {
@@ -68,4 +68,14 @@ test("document names are categorised by their folder prefix", () => {
   assert.equal(documentCategory("04-medical-records__created__x.pdf"), "Medical records");
   assert.equal(documentCategory("loose-file.pdf"), "Other");
   assert.equal(documentTitle("05-medical-bills__created__acme-bill-2024.pdf"), "acme bill 2024");
+});
+
+test("lien text is split into stated amounts, with sentences without an amount kept as notes", () => {
+  const { amounts, notes } = lienAmounts("State Medicaid lien, $1,250.50 asserted. Acme no-fault: $10,000 exhausted. Disability claim pending.");
+  assert.deepEqual(amounts.map(a => [a.holder, a.amount, a.status, a.isLien]), [
+    ["State Medicaid", 1250.5, "Asserted", true],
+    ["Acme no-fault", 10000, "Exhausted", false]
+  ]);
+  assert.deepEqual(notes, ["Disability claim pending."]);
+  assert.deepEqual(lienAmounts("Medicare <b>$400</b>").amounts.map(a => [a.holder, a.amount]), [["Medicare", 400]]);
 });

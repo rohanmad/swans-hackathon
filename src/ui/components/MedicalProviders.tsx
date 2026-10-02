@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, FileText, Phone } from 'lucide-react'
+import { ChevronDown, FileText, Mail, Phone } from 'lucide-react'
 import type { MedicalProvider, TreatmentStatus } from '../types'
 import { useSource } from '../context/SourceContext'
 import { cx, fmtDate, telHref } from '../lib/format'
@@ -48,6 +48,15 @@ export function MedicalProviders({ providers }: { providers: MedicalProvider[] }
                     <a href={telHref(p.phone)} className="tabular flex items-center gap-1 hover:text-swan">
                       <Phone size={11} strokeWidth={1.7} />
                       {p.phone}
+                    </a>
+                    <span className="text-line-strong">|</span>
+                  </>
+                )}
+                {p.email && (
+                  <>
+                    <a href={`mailto:${p.email}`} className="flex items-center gap-1 truncate hover:text-swan">
+                      <Mail size={11} strokeWidth={1.7} />
+                      {p.email}
                     </a>
                     <span className="text-line-strong">|</span>
                   </>

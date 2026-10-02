@@ -196,21 +196,3 @@ export function GapsAndSteps({ brief }: { brief: AiBrief }) {
     </div>
   );
 }
-
-export function Chronology({ brief }: { brief: AiBrief }) {
-  if (!brief.chronology.length) return null;
-  return (
-    <section>
-      <SectionHeader title="Treatment chronology" meta={`${brief.chronology.length} events · AI-extracted from notes, emails and documents`} />
-      <ul>
-        {brief.chronology.map((e, i) => (
-          <li key={i} className="grid grid-cols-[92px_220px_1fr] items-baseline gap-4 border-b border-line py-2.5">
-            <span className="tabular font-mono text-[11px] text-muted">{fmtDate(e.date, true)}</span>
-            <span className="truncate text-[12.5px] font-medium text-ink">{e.provider}</span>
-            <span className="text-[13px] leading-snug text-ink-2"><CitedText text={e.event} ids={e.sources} tone={citeTone(e.event, "ok")} /></span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}

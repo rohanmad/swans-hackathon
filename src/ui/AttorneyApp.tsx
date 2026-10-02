@@ -4,7 +4,7 @@ import type { Digest } from "@/lib/digest";
 import type { Snapshot } from "@/lib/types";
 import { buildBrief, sourceId, type Brief } from "./adapter";
 import { SourceProvider, useSource } from "./context/SourceContext";
-import { AiSummary, Chronology, GapsAndSteps, Injuries, type AiState } from "./components/AiBriefing";
+import { AiSummary, GapsAndSteps, Injuries, type AiState } from "./components/AiBriefing";
 import { AttentionCenter, WaitingOn } from "./components/AttentionCenter";
 import { CaseHeader } from "./components/CaseHeader";
 import { CaseSignals } from "./components/CaseSignals";
@@ -18,6 +18,7 @@ import { MedicalProviders } from "./components/MedicalProviders";
 import { MedicalRecordSummary } from "./components/MedicalRecordSummary";
 import { ProviderDesk } from "./components/ProviderDesk";
 import { SectionHeader } from "./components/SectionHeader";
+import { TreatmentTimeline } from "./components/TreatmentTimeline";
 import { Sidebar, type PageId } from "./components/Sidebar";
 import { SourceDrawer } from "./components/SourceDrawer";
 import { cx, fmtDate } from "./lib/format";
@@ -59,12 +60,10 @@ export function AttorneyApp({ snapshot, digest, syncing, onResync, onSwitchMatte
           )}
           {page === "providers" && (
             <Page>
-              <ProviderDesk desk={brief.providerDesk} />
-              {ai.brief && ai.brief.chronology.length > 0 && <div className="mt-12"><Chronology brief={ai.brief} /></div>}
-              <div className="mt-12 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12">
-                <MedicalProviders providers={brief.providers} />
-                {brief.bills.length > 0 && <MedicalBills bills={brief.bills} totalSourceId={brief.billsSourceId} />}
-              </div>
+              <ProviderDesk
+                desk={brief.providerDesk} providers={brief.providers} bills={brief.bills} billsSourceId={brief.billsSourceId}
+                timeline={<TreatmentTimeline lanes={brief.treatmentLanes} incidentDate={brief.incident?.date} />}
+              />
             </Page>
           )}
         </main>

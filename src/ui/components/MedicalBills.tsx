@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import type { BillStatus, MedicalBill } from '../types'
 import { useSource } from '../context/SourceContext'
-import { cx, fmtMoney } from '../lib/format'
+import { cx, fmtDate, fmtMoney } from '../lib/format'
 import { EvidenceLink } from './EvidenceLink'
 import { SectionHeader } from './SectionHeader'
 
@@ -19,9 +19,10 @@ interface Props {
   bills: MedicalBill[]
   onOpenFinancials?: () => void
   totalSourceId?: string
+  showTotal?: boolean
 }
 
-export function MedicalBills({ bills, onOpenFinancials, totalSourceId }: Props) {
+export function MedicalBills({ bills, onOpenFinancials, totalSourceId, showTotal = true }: Props) {
   const { openSource, activeSourceId } = useSource()
   const sorted = [...bills].sort((a, b) => b.amount - a.amount)
   const total = sorted.reduce((sum, b) => sum + b.amount, 0)
@@ -30,10 +31,12 @@ export function MedicalBills({ bills, onOpenFinancials, totalSourceId }: Props) 
     <section>
       <SectionHeader title="Medical bills" meta={`${bills.length} providers`} />
 
-      <div className="mt-4">
-        <div className="label">Total medical bills</div>
-        <div className="tabular mt-1.5 text-[30px] leading-none font-medium tracking-[-0.02em]">{fmtMoney(total)}</div>
-      </div>
+      {showTotal && (
+        <div className="mt-4">
+          <div className="label">Total medical bills</div>
+          <div className="tabular mt-1.5 text-[30px] leading-none font-medium tracking-[-0.02em]">{fmtMoney(total)}</div>
+        </div>
+      )}
 
       <div className="mt-3 flex h-[6px] gap-[2px] overflow-hidden rounded-full">
         {sorted.map((b, i) => (
@@ -44,7 +47,7 @@ export function MedicalBills({ bills, onOpenFinancials, totalSourceId }: Props) 
       <table className="mt-3 w-full text-[13px]">
         <thead>
           <tr className="border-b border-line text-left">
-            <th className="label py-1.5 font-normal">Provider</th>
+            <th className="label py-1.5 font-normal">Provider · dates of service</th>
             <th className="label py-1.5 text-right font-normal">Amount</th>
             <th className="label py-1.5 pl-4 text-right font-normal">Status</th>
           </tr>
@@ -63,9 +66,16 @@ export function MedicalBills({ bills, onOpenFinancials, totalSourceId }: Props) 
               >
                 <td className="py-2">
                   <span className="flex items-center gap-2">
-                    <span className={cx('h-2 w-2 rounded-[2px]', barTones[i % barTones.length])} />
+                    <span className={cx('h-2 w-2 shrink-0 rounded-[2px]', barTones[i % barTones.length])} />
                     {b.payee}
                   </span>
+                  {b.serviceFrom && (
+                    <span className="tabular mt-0.5 block pl-4 font-mono text-[10.5px] text-muted">
+                      {b.serviceTo && b.serviceTo !== b.serviceFrom
+                        ? `${fmtDate(b.serviceFrom, true)} – ${fmtDate(b.serviceTo, true)}`
+                        : fmtDate(b.serviceFrom, true)}
+                    </span>
+                  )}
                 </td>
                 <td className="tabular py-2 text-right font-medium">{fmtMoney(b.amount)}</td>
                 <td className="py-2 pl-4 text-right">
