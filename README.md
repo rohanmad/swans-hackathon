@@ -79,3 +79,5 @@ npm run build
 | `src/app/api/**` | Route handlers (OAuth, status, matters, sync, documents, shares) |
 
 See [HANDOVER.md](HANDOVER.md) for implementation notes.
+
+`design-prototype/` is a separate, earlier Vite UI mockup from a teammate. It uses illustrative placeholder data, is not connected to Clio, and is not part of the submitted app.
