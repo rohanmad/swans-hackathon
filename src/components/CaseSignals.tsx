@@ -1,14 +1,13 @@
 import type { CaseSignal } from '../types'
 import { useSource } from '../context/SourceContext'
-import { sourceById } from '../data/sources'
 import { cx, fmtDate } from '../lib/format'
 
 export function CaseSignals({ signals }: { signals: CaseSignal[] }) {
-  const { openSource } = useSource()
+  const { sources, openSource } = useSource()
   return (
     <div className="grid grid-cols-4 border-y border-ink/80">
       {signals.map((s, i) => {
-        const src = sourceById[s.sourceId]
+        const src = sources[s.sourceId]
         return (
           <button
             key={s.id}

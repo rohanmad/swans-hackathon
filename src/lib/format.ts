@@ -33,6 +33,14 @@ export function fmtGap(days: number) {
   return `${Math.round(days / 30)} mo`
 }
 
+export function fmtMoney(n: number) {
+  return `$${n.toLocaleString('en-US')}`
+}
+
+export function telHref(phone: string) {
+  return `tel:+1${phone.replace(/\D/g, '')}`
+}
+
 export function cx(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(' ')
 }

@@ -3,7 +3,6 @@ import { ExternalLink, FileText, Mail, Receipt, Scale, ShieldCheck, StickyNote, 
 import type { LucideIcon } from 'lucide-react'
 import type { SourceKind } from '../types'
 import { useSource } from '../context/SourceContext'
-import { sourceById } from '../data/sources'
 import { fmtDate } from '../lib/format'
 
 const kindMeta: Record<SourceKind, { label: string; icon: LucideIcon }> = {
@@ -15,9 +14,9 @@ const kindMeta: Record<SourceKind, { label: string; icon: LucideIcon }> = {
   internal: { label: 'Internal', icon: StickyNote },
 }
 
-export function SourceDrawer() {
-  const { activeSourceId, closeSource } = useSource()
-  const src = activeSourceId ? sourceById[activeSourceId] : null
+export function SourceDrawer({ actionLabel = 'Open original in Clio' }: { actionLabel?: string }) {
+  const { sources, activeSourceId, closeSource } = useSource()
+  const src = activeSourceId ? sources[activeSourceId] : null
 
   useEffect(() => {
     if (!src) return
@@ -87,14 +86,18 @@ export function SourceDrawer() {
             </div>
           </div>
 
-          <div className="label mt-6 mb-2">Used in</div>
-          <ul className="divide-y divide-line border-y border-line">
-            {src.usedIn.map((u) => (
-              <li key={u} className="py-2 text-[12.5px] text-ink-2">
-                {u}
-              </li>
-            ))}
-          </ul>
+          {src.usedIn.length > 0 && (
+            <>
+              <div className="label mt-6 mb-2">Used in</div>
+              <ul className="divide-y divide-line border-y border-line">
+                {src.usedIn.map((u) => (
+                  <li key={u} className="py-2 text-[12.5px] text-ink-2">
+                    {u}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <div className="mt-5 text-[11.5px] text-muted">
             Located in <span className="text-ink-2">{src.origin}</span>
@@ -107,7 +110,7 @@ export function SourceDrawer() {
             type="button"
             className="flex items-center gap-1.5 rounded-[5px] bg-ink px-3 py-1.5 text-[12.5px] text-paper transition-opacity hover:opacity-90"
           >
-            Open original in Clio <ExternalLink size={12} />
+            {actionLabel} <ExternalLink size={12} />
           </button>
         </div>
       </aside>

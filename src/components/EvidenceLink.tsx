@@ -1,4 +1,3 @@
-import { sourceById } from '../data/sources'
 import { useSource } from '../context/SourceContext'
 import { cx, fmtDate } from '../lib/format'
 
@@ -7,11 +6,12 @@ interface Props {
   label?: string
   className?: string
   showPrefix?: boolean
+  prefix?: string
 }
 
-export function EvidenceLink({ sourceId, label, className, showPrefix = true }: Props) {
-  const { openSource, activeSourceId } = useSource()
-  const src = sourceById[sourceId]
+export function EvidenceLink({ sourceId, label, className, showPrefix = true, prefix = 'Source ·' }: Props) {
+  const { sources, openSource, activeSourceId } = useSource()
+  const src = sources[sourceId]
   if (!src) return null
   const text = label ?? `${src.title} · ${fmtDate(src.date)}`
   const active = activeSourceId === sourceId
@@ -28,7 +28,7 @@ export function EvidenceLink({ sourceId, label, className, showPrefix = true }: 
         className,
       )}
     >
-      {showPrefix && <span className="text-faint group-hover:text-swan/70">Source ·</span>}
+      {showPrefix && <span className="text-faint group-hover:text-swan/70">{prefix}</span>}
       <span className="underline decoration-line-strong decoration-dotted underline-offset-[3px] group-hover:decoration-swan">
         {text}
       </span>

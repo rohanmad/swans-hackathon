@@ -21,7 +21,7 @@ export const sources: Source[] = [
     ],
     excerpt:
       'Vehicle 2 failed to stop and struck Vehicle 1 from behind. Driver of Vehicle 2 cited for following too closely.',
-    usedIn: ['Case Summary', 'Liability', 'Case Story · Accident'],
+    usedIn: ['Incident', 'Demand Documents · Liability', 'Case Story · Accident'],
   },
   {
     id: 'src-er',
@@ -42,7 +42,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Acute lumbar strain. Cervical strain. Follow up with orthopedics within 2 weeks.',
-    usedIn: ['Primary Injuries · Neck', 'Case Story · Accident'],
+    usedIn: ['Injuries · Neck', 'Case Story · Accident'],
   },
   {
     id: 'src-mri1',
@@ -63,7 +63,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'L4–L5 disc herniation with nerve-root contact, consistent with reported radicular symptoms.',
-    usedIn: ['Primary Injuries · Lower back', 'Case Summary', 'Case Story · Injury'],
+    usedIn: ['Injuries · Lower back', 'Medical Record Summary', 'Case Story · Injury'],
   },
   {
     id: 'src-ortho',
@@ -84,7 +84,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Physical therapy 2× weekly for 12 weeks. Right-knee X-ray ordered.',
-    usedIn: ['Primary Injuries · Lower back', 'Primary Injuries · Right knee', 'Case Story · Treatment'],
+    usedIn: ['Injuries · Lower back', 'Injuries · Right knee', 'Case Story · Treatment'],
   },
   {
     id: 'src-xray',
@@ -105,7 +105,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'No acute fracture. Mild soft-tissue swelling anterior to the patella.',
-    usedIn: ['Primary Injuries · Right knee'],
+    usedIn: ['Injuries · Right knee'],
   },
   {
     id: 'src-pt',
@@ -126,7 +126,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Lower-back pain plateaued at 5/10 with intermittent left-leg radiation.',
-    usedIn: ['Treatment signal', 'Primary Injuries · Lower back', 'Primary Injuries · Right knee'],
+    usedIn: ['Medical Record Summary', 'Injuries · Lower back', 'Injuries · Right knee'],
   },
   {
     id: 'src-pt-appt',
@@ -143,7 +143,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Status: Attended. Next session scheduled Oct 6.',
-    usedIn: ['What Changed', 'Treatment signal'],
+    usedIn: ['Medical Providers · Core Motion PT'],
   },
   {
     id: 'src-lor',
@@ -185,7 +185,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Bodily injury liability: $500,000 per person / $1,000,000 per accident.',
-    usedIn: ['Coverage signal', 'Case Summary', 'Case Story · Coverage'],
+    usedIn: ['Case at a Glance · Coverage', 'Critical Case Notes', 'Case Story · Coverage'],
   },
   {
     id: 'src-valuation',
@@ -206,7 +206,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Working valuation $250,000. Revisit after follow-up MRI and pain-management consult.',
-    usedIn: ['Case Value signal'],
+    usedIn: ['Case at a Glance · Estimated value'],
   },
   {
     id: 'src-ledger',
@@ -222,7 +222,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Total firm spend: $12,420. September: $2,100.',
-    usedIn: ['Firm Spend signal'],
+    usedIn: ['Financials · Firm spend'],
   },
   {
     id: 'src-liens',
@@ -238,7 +238,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Total outstanding medical liens: $38,200.',
-    usedIn: ['Case Summary', 'Financials'],
+    usedIn: ['Medical Bills', 'Financials'],
   },
   {
     id: 'src-call',
@@ -259,7 +259,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'No calls, emails, or texts with the client logged after Sept 14.',
-    usedIn: ['Last client contact', 'Needs Attention'],
+    usedIn: ['Client · Last contact', 'Needs Attention'],
   },
   {
     id: 'src-email-insurer',
@@ -280,7 +280,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Please provide updated orthopedic notes and complete physical therapy records through the present.',
-    usedIn: ['What Changed', 'Needs Attention', 'Case Summary'],
+    usedIn: ['Critical Case Notes', 'Needs Attention', 'Demand Documents · Insurance'],
   },
   {
     id: 'src-mri2',
@@ -305,7 +305,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Persistent L4–L5 disc herniation, now 6 mm, with continued contact of the left L5 nerve root.',
-    usedIn: ['What Changed', 'Primary Injuries · Lower back', 'Case Story · Injury'],
+    usedIn: ['Critical Case Notes', 'Medical Record Summary', 'Injuries · Lower back', 'Case Story · Injury'],
   },
   {
     id: 'src-lee-request',
@@ -322,7 +322,7 @@ export const sources: Source[] = [
       },
     ],
     excerpt: 'Could you confirm the case is still active and whether coverage has been identified?',
-    usedIn: ['What Changed', 'Needs Attention'],
+    usedIn: ['Needs Attention'],
   },
   {
     id: 'src-auth',
@@ -360,6 +360,150 @@ export const sources: Source[] = [
     ],
     excerpt: '2 tasks overdue: client check-in call (Sept 28), updated records to insurer (Sept 30).',
     usedIn: ['Needs Attention'],
+  },
+  {
+    id: 'src-witness',
+    title: 'Witness Statement · K. Alvarez',
+    kind: 'legal',
+    docType: 'Recorded Statement (transcribed)',
+    date: '2026-05-06',
+    author: 'Karen Alvarez, independent witness',
+    origin: 'Clio · Documents / Liability',
+    sections: [
+      {
+        heading: 'Statement',
+        body: 'I was in the left lane at the light. The pickup behind the Honda never slowed down and hit it while the light was still red. The Honda was fully stopped.',
+      },
+    ],
+    excerpt: 'The pickup behind the Honda never slowed down and hit it while the light was still red.',
+    usedIn: ['Demand Documents · Liability'],
+  },
+  {
+    id: 'src-photos',
+    title: 'Scene & Vehicle Photos',
+    kind: 'legal',
+    docType: 'Photo set (24 images)',
+    date: '2026-05-04',
+    author: 'Client-provided · Westbrook PD',
+    origin: 'Clio · Documents / Liability',
+    sections: [
+      {
+        heading: 'Contents',
+        body: 'Rear bumper and trunk crush damage to 2019 Honda Accord; front-end damage to 2021 Ford F-150; intersection of Route 9 and Elm St. showing signal placement.',
+      },
+    ],
+    excerpt: 'Rear bumper and trunk crush damage to 2019 Honda Accord.',
+    usedIn: ['Demand Documents · Liability'],
+  },
+  {
+    id: 'src-bill-er',
+    title: 'St. Mary’s Regional · Itemized Bill',
+    kind: 'financial',
+    docType: 'Itemized Statement',
+    date: '2026-06-02',
+    author: 'St. Mary’s Regional Billing',
+    origin: 'Clio · Documents / Bills',
+    sections: [
+      {
+        heading: 'Charges',
+        body: 'Emergency department visit (Level 4) $3,420 · Lumbar X-ray $1,180 · EMS transport $2,250. Balance due: $6,850.',
+      },
+    ],
+    excerpt: 'Balance due: $6,850.',
+    usedIn: ['Medical Bills'],
+  },
+  {
+    id: 'src-bill-imaging',
+    title: 'Westbrook Imaging · Itemized Bill',
+    kind: 'financial',
+    docType: 'Itemized Statement',
+    date: '2026-09-30',
+    author: 'Westbrook Imaging Billing',
+    origin: 'Clio · Documents / Bills',
+    sections: [
+      {
+        heading: 'Charges',
+        body: 'Lumbar MRI (May 14) $2,900 · Right knee X-ray (May 28) $640 · Follow-up lumbar MRI (Sept 28) $3,860. Balance: $7,400. Sept 28 study billed, pending posting.',
+      },
+    ],
+    excerpt: 'Balance: $7,400. Sept 28 study billed, pending posting.',
+    usedIn: ['Medical Bills'],
+  },
+  {
+    id: 'src-bill-ortho',
+    title: 'Westbrook Orthopedics · Itemized Bill',
+    kind: 'financial',
+    docType: 'Itemized Statement',
+    date: '2026-09-26',
+    author: 'Westbrook Orthopedics Billing',
+    origin: 'Clio · Documents / Bills',
+    sections: [
+      {
+        heading: 'Patient',
+        body: 'John Sapini · DOI 05/03/2026 · Treating: Dr. Sarah Lee.',
+      },
+      {
+        heading: 'Charges',
+        body: 'New patient consult (May 21) $1,450 · Follow-up visits ×6 $5,100 · Re-evaluation and imaging review (Sept 30) $1,900 · Procedures and DME $3,500. Outstanding balance: $11,950.',
+      },
+    ],
+    excerpt: 'Outstanding balance: $11,950.',
+    usedIn: ['Medical Bills', 'Provider Portal · Liens & Bills'],
+  },
+  {
+    id: 'src-bill-pt',
+    title: 'Core Motion PT · Itemized Bill',
+    kind: 'financial',
+    docType: 'Itemized Statement',
+    date: '2026-09-29',
+    author: 'Core Motion PT Billing',
+    origin: 'Clio · Documents / Bills',
+    sections: [
+      {
+        heading: 'Charges',
+        body: 'Initial evaluation $400 · Therapy sessions ×12 at $966 avg. Outstanding balance: $12,000.',
+      },
+    ],
+    excerpt: 'Outstanding balance: $12,000.',
+    usedIn: ['Medical Bills'],
+  },
+  {
+    id: 'src-lien-ortho',
+    title: 'Lien Notice · Westbrook Orthopedics',
+    kind: 'legal',
+    docType: 'Letter of Protection / Medical Lien',
+    date: '2026-05-22',
+    author: 'Westbrook Orthopedics Billing',
+    origin: 'Clio · Documents / Liens',
+    sections: [
+      {
+        heading: 'Terms',
+        body: 'Westbrook Orthopedics agrees to defer collection for treatment of John Sapini related to the May 3, 2026 collision. Balance to be satisfied from settlement or judgment proceeds.',
+      },
+      {
+        heading: 'Acknowledged',
+        body: 'Acknowledged by counsel May 22, 2026.',
+      },
+    ],
+    excerpt: 'Balance to be satisfied from settlement or judgment proceeds.',
+    usedIn: ['Medical Bills', 'Provider Portal · Liens & Bills'],
+  },
+  {
+    id: 'src-demand-draft',
+    title: 'Demand Letter · Working Draft',
+    kind: 'internal',
+    docType: 'Draft (v2)',
+    date: '2026-09-21',
+    author: 'John Smith, Lead Attorney',
+    origin: 'Clio · Documents / Demand (internal)',
+    sections: [
+      {
+        heading: 'Status',
+        body: 'Liability and damages sections drafted. Specials table awaiting final imaging and ortho bills. Hold until follow-up MRI and pain-management consult are in hand.',
+      },
+    ],
+    excerpt: 'Hold until follow-up MRI and pain-management consult are in hand.',
+    usedIn: ['Demand Documents · Demand'],
   },
 ]
 

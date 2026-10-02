@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Source } from '../types'
 
 interface SourceState {
+  sources: Record<string, Source>
   activeSourceId: string | null
   openSource: (id: string) => void
   closeSource: () => void
@@ -9,13 +11,13 @@ interface SourceState {
 
 const SourceContext = createContext<SourceState | null>(null)
 
-export function SourceProvider({ children }: { children: ReactNode }) {
+export function SourceProvider({ sources, children }: { sources: Record<string, Source>; children: ReactNode }) {
   const [activeSourceId, setActive] = useState<string | null>(null)
-  const openSource = useCallback((id: string) => setActive(id), [])
+  const openSource = useCallback((id: string) => setActive(sources[id] ? id : null), [sources])
   const closeSource = useCallback(() => setActive(null), [])
   const value = useMemo(
-    () => ({ activeSourceId, openSource, closeSource }),
-    [activeSourceId, openSource, closeSource],
+    () => ({ sources, activeSourceId, openSource, closeSource }),
+    [sources, activeSourceId, openSource, closeSource],
   )
   return <SourceContext.Provider value={value}>{children}</SourceContext.Provider>
 }

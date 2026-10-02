@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { caseData, searchIndex } from './data/case'
+import { caseFile, searchIndex } from './data/case'
+import { sourceById } from './data/sources'
+import { providerView } from './data/providerView'
 import { SourceProvider } from './context/SourceContext'
 import { Sidebar } from './components/Sidebar'
 import type { PageId } from './components/Sidebar'
@@ -7,6 +9,8 @@ import { CaseHeader } from './components/CaseHeader'
 import { SourceDrawer } from './components/SourceDrawer'
 import { GlobalSearch } from './components/GlobalSearch'
 import { Overview } from './pages/Overview'
+import { ProviderPortal } from './provider/ProviderPortal'
+import { navigate, usePathname } from './lib/router'
 
 const pageTitles: Record<PageId, string> = {
   overview: 'Overview',
@@ -21,6 +25,11 @@ const pageTitles: Record<PageId, string> = {
 }
 
 export default function App() {
+  const path = usePathname()
+  return path.startsWith('/provider') ? <ProviderPortal view={providerView} /> : <AttorneyApp />
+}
+
+function AttorneyApp() {
   const [page, setPage] = useState<PageId>('overview')
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -35,16 +44,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const onNavigate = (id: PageId) => (id === 'provider-portal' ? navigate('/provider') : setPage(id))
+
   return (
-    <SourceProvider>
+    <SourceProvider sources={sourceById}>
       <div className="flex min-h-screen min-w-[1100px]">
-        <Sidebar current={page} onNavigate={setPage} />
+        <Sidebar current={page} onNavigate={onNavigate} />
         <main className="min-w-0 flex-1">
           <div className="sticky top-0 z-30">
-            <CaseHeader data={caseData} onSearch={() => setSearchOpen(true)} />
+            <CaseHeader data={caseFile.case} onSearch={() => setSearchOpen(true)} />
           </div>
           {page === 'overview' ? (
-            <Overview onViewAllActivity={() => setPage('timeline')} />
+            <Overview onOpenFinancials={() => setPage('financials')} />
           ) : (
             <Placeholder title={pageTitles[page]} onBack={() => setPage('overview')} />
           )}

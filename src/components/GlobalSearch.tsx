@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CornerDownLeft, Search } from 'lucide-react'
 import type { SearchEntry } from '../types'
 import { useSource } from '../context/SourceContext'
-import { sourceById } from '../data/sources'
 import { cx, fmtDate } from '../lib/format'
 
 interface Props {
@@ -34,7 +33,7 @@ export function GlobalSearch({ open, onClose, index }: Props) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { openSource } = useSource()
+  const { sources, openSource } = useSource()
   const results = useMemo(() => rank(index, query), [index, query])
 
   useEffect(() => {
@@ -104,7 +103,7 @@ export function GlobalSearch({ open, onClose, index }: Props) {
         {results.length > 0 && (
           <ul className="max-h-[420px] overflow-y-auto py-1.5">
             {results.map((r, i) => {
-              const src = sourceById[r.sourceId]
+              const src = sources[r.sourceId]
               return (
                 <li key={r.id}>
                   <button

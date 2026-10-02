@@ -1,48 +1,50 @@
-import { attention, caseData, changeStats, changes, injuries, storyEvents, treatmentSpan, waitingOn } from '../data/case'
-import { AttentionCenter, WaitingOn } from '../components/AttentionCenter'
-import { CaseBrief } from '../components/CaseBrief'
-import { CaseGlance } from '../components/CaseGlance'
+import { caseFile, treatmentSpan } from '../data/case'
 import { CaseSignals } from '../components/CaseSignals'
 import { CaseStory } from '../components/CaseStory'
-import { ChangeFeed } from '../components/ChangeFeed'
-import { PrimaryInjuries } from '../components/PrimaryInjuries'
+import { ClientCard } from '../components/ClientCard'
+// import { CriticalNotes } from '../components/CriticalNotes'
+import { DemandDocuments } from '../components/DemandDocuments'
+import { IncidentCard } from '../components/IncidentCard'
+import { Injuries } from '../components/Injuries'
+import { MedicalBills } from '../components/MedicalBills'
+import { MedicalProviders } from '../components/MedicalProviders'
+import { MedicalRecordSummary } from '../components/MedicalRecordSummary'
 
-export function Overview({ onViewAllActivity }: { onViewAllActivity: () => void }) {
+export function Overview({ onOpenFinancials }: { onOpenFinancials: () => void }) {
+  const f = caseFile
   return (
-    <div className="mx-auto max-w-[1400px] px-10 pt-8 pb-24">
-      <div className="flex items-end justify-between gap-6">
-        <div>
-          <h1 className="text-[30px] leading-none font-semibold tracking-[-0.025em]">Case Overview</h1>
-          <p className="mt-2 text-[13.5px] text-muted">A 90-second view of the Sapini matter.</p>
+    <div className="mx-auto max-w-[1400px] px-10 pt-7 pb-24">
+      {/* <CriticalNotes data={f.criticalNotes} /> */}
+
+      <div>
+        <CaseSignals signals={f.case.signals} />
+      </div>
+
+      <div className="mt-10 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12 max-[1240px]:gap-8">
+        <div className="space-y-10">
+          <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-8">
+            <IncidentCard incident={f.incident} />
+            <ClientCard client={f.client} />
+          </div>
+          <Injuries injuries={f.injuries} />
+        </div>
+
+        <div className="space-y-10">
+          <MedicalProviders providers={f.medicalProviders} />
+          <MedicalBills bills={f.medicalBills} onOpenFinancials={onOpenFinancials} />
         </div>
       </div>
 
-      <div className="mt-6">
-        <CaseSignals signals={caseData.signals} />
-      </div>
-
-      <div className="mt-10 grid grid-cols-[minmax(0,1fr)_320px] gap-12 max-[1240px]:grid-cols-[minmax(0,1fr)_280px] max-[1240px]:gap-8">
-        <CaseBrief data={caseData} />
-        <CaseGlance items={caseData.glance} />
+      <div className="mt-14">
+        <MedicalRecordSummary sections={f.medicalSummary} />
       </div>
 
       <div className="mt-14">
-        <CaseStory events={storyEvents} treatmentSpan={treatmentSpan} lastViewed={caseData.lastViewed} />
+        <CaseStory events={f.timeline} treatmentSpan={treatmentSpan} />
       </div>
 
-      <div className="mt-12 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12 max-[1240px]:gap-8">
-        <ChangeFeed
-          items={changes}
-          lastViewed={caseData.lastViewed}
-          totalSinceLastViewed={changeStats.totalSinceLastViewed}
-          onViewAll={onViewAllActivity}
-        />
-        <AttentionCenter items={attention} />
-      </div>
-
-      <div className="mt-12 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-12 max-[1240px]:gap-8">
-        <PrimaryInjuries injuries={injuries} />
-        <WaitingOn items={waitingOn} />
+      <div className="mt-14">
+        <DemandDocuments documents={f.demandDocuments} />
       </div>
     </div>
   )
